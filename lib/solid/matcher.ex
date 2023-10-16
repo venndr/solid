@@ -10,45 +10,6 @@ defimpl Solid.Matcher, for: Any do
   def match(_, _), do: {:error, :not_found}
 end
 
-defimpl Solid.Matcher, for: List do
-  def match(data, []), do: {:ok, data}
-
-  def match(data, ["size"]) do
-    {:ok, Enum.count(data)}
-  end
-
-  def match(data, [key | keys]) when is_integer(key) do
-    case Enum.fetch(data, key) do
-      {:ok, value} -> @protocol.match(value, keys)
-      _ -> {:error, :not_found}
-    end
-  end
-end
-
-defimpl Solid.Matcher, for: Map do
-  def match(data, []) do
-    {:ok, data}
-  end
-
-  def match(data, ["size"]) do
-    {:ok, Map.get(data, "size", Enum.count(data))}
-  end
-
-  def match(data, [key | []]) do
-    case Map.fetch(data, key) do
-      {:ok, value} -> {:ok, value}
-      _ -> {:error, :not_found}
-    end
-  end
-
-  def match(data, [key | keys]) do
-    case Map.fetch(data, key) do
-      {:ok, value} -> @protocol.match(value, keys)
-      _ -> {:error, :not_found}
-    end
-  end
-end
-
 defimpl Solid.Matcher, for: BitString do
   def match(current, []), do: {:ok, current}
 
