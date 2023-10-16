@@ -311,8 +311,11 @@ defmodule Solid.Filter do
   iex> Solid.Filter.join(["a", "b", "c"], "-")
   "a-b-c"
   """
-  @spec join(list, String.t()) :: String.t()
-  def join(input, glue \\ " ") when is_list(input), do: Enum.join(input, glue)
+  @spec join(list | String.t() | nil, String.t()) :: String.t()
+  def join(input, glue \\ " ")
+  def join(input, glue) when is_list(input), do: Enum.join(input, glue)
+  def join(input, glue) when is_binary(input), do: input
+  def join(nil, _glue), do: ""
 
   @doc """
   Returns the last item of an array.
