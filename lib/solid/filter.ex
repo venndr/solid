@@ -448,7 +448,9 @@ defmodule Solid.Filter do
   iex> Solid.Filter.remove("I strained to see the train through the rain", "rain")
   "I sted to see the t through the "
   """
-  @spec remove(String.t(), String.t()) :: String.t()
+  @spec remove(String.t() | nil, String.t()) :: String.t()
+  def remove(nil, _string), do: nil
+
   def remove(input, string) do
     String.replace(input, string, "")
   end
