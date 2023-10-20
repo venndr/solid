@@ -260,7 +260,7 @@ defmodule Solid.Filter do
   """
   @spec first(list) :: any
   def first(input) when is_list(input), do: List.first(input)
-  def first(_), do: nil
+  def first(x), do: x
 
   @doc """
   Rounds a number down to the nearest whole number.
