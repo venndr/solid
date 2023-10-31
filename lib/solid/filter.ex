@@ -370,8 +370,9 @@ defmodule Solid.Filter do
   iex> Solid.Filter.minus(183.357, 12)
   171.357
   """
-  @spec minus(number, number) :: number
-  def minus(input, number), do: input - number
+  @spec minus(number | binary, number) :: number
+  def minus(input, number) when is_number(input), do: input - number
+  def minus(input, operand), do: String.to_integer(input) * operand
 
   @doc """
   Subtracts a number from another number.
