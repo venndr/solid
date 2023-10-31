@@ -314,7 +314,7 @@ defmodule Solid.Filter do
   @spec join(list | String.t() | nil, String.t()) :: String.t()
   def join(input, glue \\ " ")
   def join(input, glue) when is_list(input), do: Enum.join(input, glue)
-  def join(input, glue) when is_binary(input), do: input
+  def join(input, _glue) when is_binary(input), do: input
   def join(nil, _glue), do: ""
 
   @doc """
@@ -649,8 +649,9 @@ defmodule Solid.Filter do
   iex> Solid.Filter.times(183.357, 12)
   2200.284
   """
-  @spec times(number, number) :: number
-  def times(input, operand), do: input * operand
+  @spec times(number | binary, number) :: number
+  def times(input, operand) when is_number(input), do: input * operand
+  def times(input, operand), do: String.to_integer(input) * operand
 
   @doc """
   truncate shortens a string down to the number of characters passed as a parameter.
