@@ -833,11 +833,13 @@ defmodule Solid.Filter do
   iex> Solid.Filter.url_encode("Tetsuro Takara")
   "Tetsuro+Takara"
   """
-  def url_encode(iodata) do
+  def url_encode(iodata) when is_binary(iodata) and iodata != "" do
     iodata
     |> IO.iodata_to_binary()
     |> URI.encode_www_form()
   end
+
+  def url_encode(other), do: other
 
   @doc """
   URL decodes the string.
