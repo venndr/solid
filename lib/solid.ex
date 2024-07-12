@@ -1,4 +1,56 @@
 defmodule Solid do
+  @doc """
+  It sets up Solid with built-in matchers for basic types and creates local delegates to `render`,
+  `render!`, `parse`, and `parse!` in your wrapper module.
+
+  Use this macro to include Solid in your project with a default configuration.
+
+  If you're not using the default configuration and wish to customise one or several of the basic
+  matchers, refer to the documentation in the `Solid.Matcher.Builtins` module.
+
+  Use the `:delegates` option to include only a subset of the delegates in your wrapper module. To
+  exclude all delegates, pass `false` or the empty list.
+
+  Use the `:nomatchers` option to exclude the bundled matchers.
+  """
+  @all_delegates [:render, :render!, :parse, :parse!]
+  @type delegates :: :render | :render! | :parse | :parse!
+  @type option :: {:delegates, list(delegates()) | boolean()} | {:nomatchers, any()}
+  @type options :: list(option())
+  @spec __using__(options()) :: Macro.t()
+  defmacro __using__(options) do
+    delegates =
+      case Keyword.get(options, :delegates, @all_delegates) do
+        true -> @all_delegates
+        [_ | _] = v -> v
+        _ -> []
+      end
+
+    matchers = not Keyword.has_key?(options, :nomatchers)
+
+    quote do
+      if unquote(matchers) do
+        use Solid.Matcher.Builtins
+      end
+
+      if :render in unquote(delegates) do
+        defdelegate render, to: Solid
+      end
+
+      if :render! in unquote(delegates) do
+        defdelegate render!, to: Solid
+      end
+
+      if :parse in unquote(delegates) do
+        defdelegate parse, to: Solid
+      end
+
+      if :parse! in unquote(delegates) do
+        defdelegate parse!, to: Solid
+      end
+    end
+  end
+
   @moduledoc """
   Main module to interact with Solid
   """
@@ -74,11 +126,10 @@ defmodule Solid do
   end
 
   @doc """
-  It renders the compiled template using a map with vars
-  See `render/3` for more details
-
   It returns the rendered template or it raises an exception
   with the accumulated errors and a partial result
+
+  See `render/3` for more details
   """
   @spec render!(Solid.Template.t(), map, Keyword.t()) :: iolist
   def render!(%Template{} = template, hash, options \\ []) do
@@ -99,6 +150,10 @@ defmodule Solid do
   - `file_system`: a tuple of {FileSystemModule, options}. If this option is not specified, `Solid` uses `Solid.BlankFileSystem` which raises an error when the `render` tag is used. `Solid.LocalFileSystem` can be used or a custom module may be implemented. See `Solid.FileSystem` for more details.
 
   - `custom_filters`: a module name where additional filters are defined. The base filters (thos from `Solid.Filter`) still can be used, however, custom filters always take precedence.
+
+  - `strict_variables`: if `true`, it collects an error when a variable is referenced in the template, but not given in the map
+
+  - `strict_filters`: if `true`, it collects an error when a filter is referenced in the template, but not built-in or provided via `custom_filters`
 
   ## Example
 
