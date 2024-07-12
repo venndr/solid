@@ -1,4 +1,6 @@
 defmodule Solid.Helpers do
+  use Solid, delegates: false
+
   def render(text, hash \\ %{}, options \\ []) do
     case Solid.parse(text, options) do
       {:ok, template} ->
