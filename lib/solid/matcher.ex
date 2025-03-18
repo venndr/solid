@@ -12,7 +12,7 @@ defmodule Solid.Matcher.Builtins do
   The using macro supports options to selectively include (`:only`) and exclude (`:except`)
   individual matchers, should you wish to replace all or a subset with a custom matcher.
 
-  The full list of available matchers is `:any`, `:atom`, `:list`, `:map`, `:string`
+  The full list of available matchers is `:any`, `:atom`, `:list`, `:map`, `:string`, `:tuple`
 
   Examples:
 
@@ -26,9 +26,9 @@ defmodule Solid.Matcher.Builtins do
   use Solid.Matcher.Builtins, except: [:map, :atom]
   """
 
-  @all_matchers [:any, :atom, :string, :list, :map]
+  @all_matchers [:any, :atom, :string, :list, :map, :tuple]
 
-  @type matcher :: :any | :atom | :list | :map | :string
+  @type matcher :: :any | :atom | :list | :map | :string | :tuple
   @type option :: {:only, list(matcher())} | {:except, list(matcher())}
   @type options :: list(option())
   @spec __using__(options()) :: Macro.t()
@@ -97,6 +97,25 @@ defmodule Solid.Matcher.Builtins do
         end
       end
 
+      if :tuple in unquote(included) do
+        defimpl Solid.Matcher, for: Tuple do
+          def match(data, []), do: {:ok, data}
+
+          def match(data, ["size"]) do
+            {:ok, tuple_size(data)}
+          end
+
+          def match(data, [key | keys]) when is_integer(key) do
+            try do
+              elem(data, key)
+              |> @protocol.match(keys)
+            rescue
+              ArgumentError -> {:error, :not_found}
+            end
+          end
+        end
+      end
+
       if :atom in unquote(included) do
         defimpl Solid.Matcher, for: Atom do
           def match(current, []) when is_nil(current), do: {:ok, nil}
@@ -117,23 +136,6 @@ defmodule Solid.Matcher.Builtins do
           def match(d, s), do: {:error, :not_found}
         end
       end
-    end
-  end
-end
-
-defimpl Solid.Matcher, for: Tuple do
-  def match(data, []), do: {:ok, data}
-
-  def match(data, ["size"]) do
-    {:ok, tuple_size(data)}
-  end
-
-  def match(data, [key | keys]) when is_integer(key) do
-    try do
-      elem(data, key)
-      |> @protocol.match(keys)
-    rescue
-      ArgumentError -> {:error, :not_found}
     end
   end
 end
