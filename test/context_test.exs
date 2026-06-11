@@ -94,8 +94,40 @@ defmodule Solid.ContextTest do
     end
   end
 
+  defmodule RaisingMatcher do
+    def match(:expensive_scope, _key, _opts), do: raise("scope evaluated past a match")
+    def match(data, key, opts), do: Solid.Matcher.match(data, key, opts)
+  end
+
+  describe "get_in/4 scope short-circuit" do
+    test "stops evaluating scopes after the first non-nil match" do
+      context = %Context{
+        matcher_module: RaisingMatcher,
+        iteration_vars: %{"x" => 1},
+        counter_vars: :expensive_scope
+      }
+
+      assert Context.get_in(context, ["x"], [:iteration_vars, :counter_vars]) == {:ok, 1}
+    end
+
+    test "a nil match is overridden by a later scope's value" do
+      context = %Context{vars: %{"x" => nil}, counter_vars: %{"x" => 2}}
+      assert Context.get_in(context, ["x"], [:vars, :counter_vars]) == {:ok, 2}
+    end
+
+    test "a nil match is kept when later scopes miss" do
+      context = %Context{vars: %{"x" => nil}, counter_vars: %{}}
+      assert Context.get_in(context, ["x"], [:vars, :counter_vars]) == {:ok, nil}
+    end
+
+    test "a false match wins over later scopes" do
+      context = %Context{vars: %{"x" => false}, counter_vars: %{"x" => 2}}
+      assert Context.get_in(context, ["x"], [:vars, :counter_vars]) == {:ok, false}
+    end
+  end
+
   defmodule CustomMatcher do
-    def match(_, _), do: {:ok, 42}
+    def match(_, _, _opts), do: {:ok, 42}
   end
 
   describe "get_in/3 with custom matcher module" do

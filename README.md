@@ -233,7 +233,7 @@ And then pass it as an option to render `cache_module: CachexCache`.
 
 ## Using structs in context
 
-In order to pass structs to context you need to implement protocol `Solid.Matcher` for that. That protocol consist of one function `def match(data, keys)`. First argument is struct being provided and second is list of string, which are keys passed after `.` to the struct.
+In order to pass structs to context you need to implement protocol `Solid.Matcher` for that. That protocol consist of one function `def match(data, keys, opts)`. First argument is struct being provided, second is list of string, which are keys passed after `.` to the struct, and third is the options keyword passed to `Solid.render/3`, allowing matchers to reach data threaded through the render options.
 
 For example:
 
@@ -242,7 +242,7 @@ defmodule UserProfile do
   defstruct [:full_name]
 
   defimpl Solid.Matcher do
-    def match(user_profile, ["full_name"]), do: {:ok, user_profile.full_name}
+    def match(user_profile, ["full_name"], _opts), do: {:ok, user_profile.full_name}
   end
 end
 
@@ -255,8 +255,10 @@ defmodule User do
   end
 
   defimpl Solid.Matcher do
-    def match(user, ["email"]), do: {:ok, user.email}
-    def match(user, ["profile" | keys]), do: user |> User.load_profile() |> @protocol.match(keys)
+    def match(user, ["email"], _opts), do: {:ok, user.email}
+
+    def match(user, ["profile" | keys], opts),
+      do: user |> User.load_profile() |> @protocol.match(keys, opts)
   end
 end
 
@@ -273,7 +275,7 @@ If the `Solid.Matcher` protocol is not enough one can provide their own module l
 
 ```elixir
 defmodule MyMatcher do
-  def match(data, keys), do: {:ok, 42}
+  def match(data, keys, opts), do: {:ok, 42}
 end
 
 # ...

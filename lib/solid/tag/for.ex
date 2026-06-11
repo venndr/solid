@@ -66,7 +66,7 @@ defmodule Solid.Tag.For do
         context,
         options
       ) do
-    {:ok, enumerable, context} = enumerable(enumerable, context)
+    {:ok, enumerable, context} = enumerable(enumerable, context, options)
 
     enumerable = apply_parameters(enumerable, parameters)
 
@@ -150,14 +150,14 @@ defmodule Solid.Tag.For do
     acc_context
   end
 
-  defp enumerable([range: [first: first, last: last]], context) do
-    {:ok, first, context} = integer_or_field(first, context)
-    {:ok, last, context} = integer_or_field(last, context)
+  defp enumerable([range: [first: first, last: last]], context, options) do
+    {:ok, first, context} = integer_or_field(first, context, options)
+    {:ok, last, context} = integer_or_field(last, context, options)
     {:ok, first..last, context}
   end
 
-  defp enumerable(field, context) do
-    {:ok, value, context} = Solid.Argument.get(field, context)
+  defp enumerable(field, context, options) do
+    {:ok, value, context} = Solid.Argument.get(field, context, options)
     {:ok, value || [], context}
   end
 
@@ -186,6 +186,9 @@ defmodule Solid.Tag.For do
 
   defp reversed(enumerable, _), do: enumerable
 
-  defp integer_or_field(value, context) when is_integer(value), do: {:ok, value, context}
-  defp integer_or_field(field, context), do: Solid.Argument.get([field], context)
+  defp integer_or_field(value, context, _options) when is_integer(value),
+    do: {:ok, value, context}
+
+  defp integer_or_field(field, context, options),
+    do: Solid.Argument.get([field], context, options)
 end

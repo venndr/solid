@@ -13,7 +13,7 @@ defmodule Solid.Argument do
     {filters, opts} = Keyword.pop(opts, :filters, [])
     strict_variables = Keyword.get(opts, :strict_variables, false)
 
-    case do_get(arg, context, scopes) do
+    case do_get(arg, context, scopes, opts) do
       {:ok, value} ->
         {value, context} = apply_filters(value, filters, context, opts)
         {:ok, value, context}
@@ -31,9 +31,10 @@ defmodule Solid.Argument do
     end
   end
 
-  defp do_get([value: val], _hash, _scopes), do: {:ok, val}
+  defp do_get([value: val], _hash, _scopes, _opts), do: {:ok, val}
 
-  defp do_get([field: keys], context, scopes), do: Context.get_in(context, keys, scopes)
+  defp do_get([field: keys], context, scopes, opts),
+    do: Context.get_in(context, keys, scopes, opts)
 
   defp apply_filters(input, nil, context, _opts), do: {input, context}
   defp apply_filters(input, [], context, _opts), do: {input, context}

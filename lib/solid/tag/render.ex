@@ -37,13 +37,13 @@ defmodule Solid.Tag.Render do
         context,
         options
       ) do
-    {:ok, template, context} = Solid.Argument.get(template_binding, context)
+    {:ok, template, context} = Solid.Argument.get(template_binding, context, options)
     cache_module = Keyword.get(options, :cache_module, Solid.Caching.NoCache)
 
     {:ok, binding_vars, context} =
       Keyword.get(argument_binding || [], :named_arguments, [])
       |> Keyword.merge(Enum.reverse(Keyword.get(with_binding || [], :with_parameter, [])))
-      |> Solid.Argument.parse_named_arguments(context)
+      |> Solid.Argument.parse_named_arguments(context, options)
 
     binding_vars =
       binding_vars

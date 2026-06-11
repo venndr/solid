@@ -7,7 +7,7 @@ defmodule MatcherTest do
       defstruct [:full_name]
 
       defimpl Solid.Matcher do
-        def match(user_profile, ["full_name"]), do: {:ok, user_profile.full_name}
+        def match(user_profile, ["full_name"], _opts), do: {:ok, user_profile.full_name}
       end
     end
 
@@ -20,10 +20,10 @@ defmodule MatcherTest do
       end
 
       defimpl Solid.Matcher do
-        def match(user, ["email"]), do: {:ok, user.email}
+        def match(user, ["email"], _opts), do: {:ok, user.email}
 
-        def match(user, ["profile" | keys]),
-          do: user |> User.load_profile() |> @protocol.match(keys)
+        def match(user, ["profile" | keys], opts),
+          do: user |> User.load_profile() |> @protocol.match(keys, opts)
       end
     end
 
@@ -33,6 +33,31 @@ defmodule MatcherTest do
       context = %{"user" => %User{email: "test@example.com"}}
 
       assert "test@example.com: John Doe" == render(template, context)
+    end
+
+    defmodule Greeting do
+      defstruct []
+
+      defimpl Solid.Matcher do
+        def match(_greeting, ["recipient"], opts),
+          do: {:ok, Keyword.fetch!(opts, :recipient)}
+      end
+    end
+
+    test "matchers receive the render options" do
+      template = ~s(Hello, {{ greeting.recipient }}!)
+
+      context = %{"greeting" => %Greeting{}}
+
+      assert "Hello, world!" == render(template, context, recipient: "world")
+    end
+
+    test "matchers receive the render options inside for loops and render tags" do
+      template = ~s({% for g in greetings %}{{ g.recipient }} {% endfor %})
+
+      context = %{"greetings" => [%Greeting{}, %Greeting{}]}
+
+      assert "world world " == render(template, context, recipient: "world")
     end
   end
 
@@ -69,7 +94,7 @@ defmodule MatcherTest do
         [
           {~s({{molecule.atom.particle}}),
            %{"molecule" => %{"atom" => %{"particle" => :neutron}}}, "neutron"},
-           {~s({{beep.boop}}), %{"beep" => nil}, ""}
+          {~s({{beep.boop}}), %{"beep" => nil}, ""}
         ],
         fn {template, context, expected} ->
           assert expected == render(template, context)

@@ -52,7 +52,7 @@ defmodule SolidTest do
     end
 
     defmodule CustomMatcher do
-      def match(_, _), do: {:ok, 42}
+      def match(_, _, _opts), do: {:ok, 42}
     end
 
     test "custom matcher" do

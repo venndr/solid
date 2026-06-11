@@ -42,12 +42,16 @@ defmodule Solid.Context do
   Get data from context respecting the scope order provided.
 
   Possible scope values: :counter_vars, :vars or :iteration_vars
-  """
-  @spec get_in(t(), [term()], [scope]) :: {:ok, term} | {:error, {:not_found, [term()]}}
-  def get_in(context, key, scopes) do
-    resolved_key = resolve_references(context, key, scopes)
 
-    lookup_key(context, resolved_key, scopes)
+  `opts` is passed through to the matcher so it can reach data threaded
+  via the render options.
+  """
+  @spec get_in(t(), [term()], [scope], keyword()) ::
+          {:ok, term} | {:error, {:not_found, [term()]}}
+  def get_in(context, key, scopes, opts \\ []) do
+    resolved_key = resolve_references(context, key, scopes, opts)
+
+    lookup_key(context, resolved_key, scopes, opts)
   end
 
   @doc """
@@ -76,10 +80,10 @@ defmodule Solid.Context do
     end
   end
 
-  defp resolve_references(context, key, scopes) do
+  defp resolve_references(context, key, scopes, opts) do
     Enum.map(key, fn
       {:reference, reference} ->
-        case lookup_key(context, [reference], scopes) do
+        case lookup_key(context, [reference], scopes, opts) do
           {:ok, resolved} -> resolved
           {:error, _} -> reference
         end
@@ -89,14 +93,16 @@ defmodule Solid.Context do
     end)
   end
 
-  defp lookup_key(context, key, scopes) do
-    scopes
-    |> Enum.reverse()
-    |> Enum.map(&get_from_scope(context, &1, key))
-    |> Enum.reduce({:error, {:not_found, key}}, fn
-      {:ok, nil}, acc = {:ok, _} -> acc
-      value = {:ok, _}, _acc -> value
-      _value, acc -> acc
+  # Scopes are tried in the order given; the first non-nil match wins and the
+  # remaining scopes are never evaluated. An {:ok, nil} match is kept as a
+  # fallback but can still be overridden by a non-nil match from a later scope.
+  defp lookup_key(context, key, scopes, opts) do
+    Enum.reduce_while(scopes, {:error, {:not_found, key}}, fn scope, acc ->
+      case get_from_scope(context, scope, key, opts) do
+        {:ok, nil} -> {:cont, {:ok, nil}}
+        {:ok, _} = value -> {:halt, value}
+        _error -> {:cont, acc}
+      end
     end)
   end
 
@@ -106,15 +112,15 @@ defmodule Solid.Context do
     |> Enum.into(%{}, fn {value, index} -> {index, value} end)
   end
 
-  defp get_from_scope(context, :vars, key) do
-    context.matcher_module.match(context.vars, key)
+  defp get_from_scope(context, :vars, key, opts) do
+    context.matcher_module.match(context.vars, key, opts)
   end
 
-  defp get_from_scope(context, :counter_vars, key) do
-    context.matcher_module.match(context.counter_vars, key)
+  defp get_from_scope(context, :counter_vars, key, opts) do
+    context.matcher_module.match(context.counter_vars, key, opts)
   end
 
-  defp get_from_scope(context, :iteration_vars, key) do
-    context.matcher_module.match(context.iteration_vars, key)
+  defp get_from_scope(context, :iteration_vars, key, opts) do
+    context.matcher_module.match(context.iteration_vars, key, opts)
   end
 end
