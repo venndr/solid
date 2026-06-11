@@ -1,7 +1,13 @@
 defprotocol Solid.Matcher do
   @fallback_to_any true
-  @doc "Assigns context to values"
-  def match(_, _)
+  @doc """
+  Assigns context to values.
+
+  `opts` carries the render options passed to `Solid.render/3`, so custom
+  matchers can reach data threaded through them (e.g. the full rendering
+  context) without resorting to out-of-band lookups.
+  """
+  def match(_, _, _opts)
 end
 
 defmodule Solid.Matcher.Builtins do
@@ -43,13 +49,14 @@ defmodule Solid.Matcher.Builtins do
     quote do
       if :list in unquote(included) do
         defimpl Solid.Matcher, for: List do
-          def match(data, []), do: {:ok, data}
+          def match(data, [], _opts), do: {:ok, data}
 
-          def match(data, ["size" | tail]), do: data |> Enum.count() |> @protocol.match(tail)
+          def match(data, ["size" | tail], opts),
+            do: data |> Enum.count() |> @protocol.match(tail, opts)
 
-          def match(data, [key | keys]) when is_integer(key) do
+          def match(data, [key | keys], opts) when is_integer(key) do
             case Enum.fetch(data, key) do
-              {:ok, value} -> @protocol.match(value, keys)
+              {:ok, value} -> @protocol.match(value, keys, opts)
               _ -> {:error, :not_found}
             end
           end
@@ -58,23 +65,23 @@ defmodule Solid.Matcher.Builtins do
 
       if :map in unquote(included) do
         defimpl Solid.Matcher, for: Map do
-          def match(data, []) do
+          def match(data, [], _opts) do
             {:ok, data}
           end
 
-          def match(data, ["size" | tail]),
-            do: data |> Map.get("size", Enum.count(data)) |> @protocol.match(tail)
+          def match(data, ["size" | tail], opts),
+            do: data |> Map.get("size", Enum.count(data)) |> @protocol.match(tail, opts)
 
-          def match(data, [head | []]) do
+          def match(data, [head | []], _opts) do
             case Map.fetch(data, head) do
               {:ok, value} -> {:ok, value}
               _ -> {:error, :not_found}
             end
           end
 
-          def match(data, [head | tail]) do
+          def match(data, [head | tail], opts) do
             case Map.fetch(data, head) do
-              {:ok, value} -> @protocol.match(value, tail)
+              {:ok, value} -> @protocol.match(value, tail, opts)
               _ -> {:error, :not_found}
             end
           end
@@ -83,15 +90,16 @@ defmodule Solid.Matcher.Builtins do
 
       if :string in unquote(included) do
         defimpl Solid.Matcher, for: [BitString, String] do
-          def match(current, []), do: {:ok, current}
+          def match(current, [], _opts), do: {:ok, current}
 
-          def match(data, ["size" | tail]), do: data |> String.length() |> @protocol.match(tail)
+          def match(data, ["size" | tail], opts),
+            do: data |> String.length() |> @protocol.match(tail, opts)
 
-          def match(_data, [i | _]) when is_integer(i) do
+          def match(_data, [i | _], _opts) when is_integer(i) do
             {:error, :not_found}
           end
 
-          def match(_data, [i | _]) when is_binary(i) do
+          def match(_data, [i | _], _opts) when is_binary(i) do
             {:error, :not_found}
           end
         end
@@ -99,16 +107,16 @@ defmodule Solid.Matcher.Builtins do
 
       if :tuple in unquote(included) do
         defimpl Solid.Matcher, for: Tuple do
-          def match(data, []), do: {:ok, data}
+          def match(data, [], _opts), do: {:ok, data}
 
-          def match(data, ["size"]) do
+          def match(data, ["size"], _opts) do
             {:ok, tuple_size(data)}
           end
 
-          def match(data, [key | keys]) when is_integer(key) do
+          def match(data, [key | keys], opts) when is_integer(key) do
             try do
               elem(data, key)
-              |> @protocol.match(keys)
+              |> @protocol.match(keys, opts)
             rescue
               ArgumentError -> {:error, :not_found}
             end
@@ -118,22 +126,22 @@ defmodule Solid.Matcher.Builtins do
 
       if :atom in unquote(included) do
         defimpl Solid.Matcher, for: Atom do
-          def match(current, []) when is_nil(current), do: {:ok, nil}
-          def match(data, []), do: {:ok, data}
-          def match(nil, _), do: {:error, :not_found}
+          def match(current, [], _opts) when is_nil(current), do: {:ok, nil}
+          def match(data, [], _opts), do: {:ok, data}
+          def match(nil, _, _opts), do: {:error, :not_found}
 
           @doc """
           Matches all remaining cases
           """
-          def match(_current, [key]) when is_binary(key), do: {:error, :not_found}
+          def match(_current, [key], _opts) when is_binary(key), do: {:error, :not_found}
         end
       end
 
       if :any in unquote(included) do
         defimpl Solid.Matcher, for: Any do
-          def match(data, []), do: {:ok, data}
+          def match(data, [], _opts), do: {:ok, data}
 
-          def match(d, s), do: {:error, :not_found}
+          def match(d, s, _opts), do: {:error, :not_found}
         end
       end
     end
