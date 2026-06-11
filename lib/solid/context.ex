@@ -93,14 +93,16 @@ defmodule Solid.Context do
     end)
   end
 
+  # Scopes are tried in the order given; the first non-nil match wins and the
+  # remaining scopes are never evaluated. An {:ok, nil} match is kept as a
+  # fallback but can still be overridden by a non-nil match from a later scope.
   defp lookup_key(context, key, scopes, opts) do
-    scopes
-    |> Enum.reverse()
-    |> Enum.map(&get_from_scope(context, &1, key, opts))
-    |> Enum.reduce({:error, {:not_found, key}}, fn
-      {:ok, nil}, acc = {:ok, _} -> acc
-      value = {:ok, _}, _acc -> value
-      _value, acc -> acc
+    Enum.reduce_while(scopes, {:error, {:not_found, key}}, fn scope, acc ->
+      case get_from_scope(context, scope, key, opts) do
+        {:ok, nil} -> {:cont, {:ok, nil}}
+        {:ok, _} = value -> {:halt, value}
+        _error -> {:cont, acc}
+      end
     end)
   end
 
