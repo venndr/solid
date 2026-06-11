@@ -35,10 +35,23 @@ defmodule Solid.Filter do
 
   defp apply_filter(mod, func, args) do
     func = String.to_existing_atom(func)
-    {:ok, Kernel.apply(mod, func, args)}
+
+    if filter_exported?(mod, func, length(args)) do
+      {:ok, Kernel.apply(mod, func, args)}
+    else
+      :error
+    end
   rescue
-    # Unknown function name atom or unknown function -> fallback
+    # Unknown function name atom, or a filter that itself fails with one of
+    # these errors falls through to the next candidate (historic behaviour)
     _ in [ArgumentError, UndefinedFunctionError] -> :error
+  end
+
+  # function_exported?/3 does not load the module, so fall back to
+  # Code.ensure_loaded?/1 only on a miss to keep the hot path cheap
+  defp filter_exported?(mod, func, arity) do
+    function_exported?(mod, func, arity) or
+      (Code.ensure_loaded?(mod) and function_exported?(mod, func, arity))
   end
 
   @doc """
